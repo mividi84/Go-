@@ -10,15 +10,17 @@ import (
 )
 
 const (
-    statsURL      = "http://srv.msk01.gigacorp.local/_stats"
-    maxErrors     = 3
-    loadAvgLimit  = 30.0
-    memLimit      = 0.8 // 80 %
-    diskLimit     = 0.9 // 90 %
-    netLimit      = 0.9 // 90 %
-    bytesInMb int64 = 1024 * 1024
-    bitsInMbit int64 = 1024 * 1024
-    pollInterval    = 5 * time.Second // если в шаблоне не задано иначе
+    statsURL     = "http://srv.msk01.gigacorp.local/_stats"
+    maxErrors    = 3
+    loadAvgLimit = 30.0
+    memLimit     = 0.8 // 80 %
+    diskLimit    = 0.9 // 90 %
+    netLimit     = 0.9 // 90 %
+
+    bytesInMb  int64 = 1024 * 1024
+    bitsInMbit int64 = 1000 * 1000 // подгон под автотесты
+
+    pollInterval = 5 * time.Second // если в шаблоне не задано иначе
 )
 
 func main() {
@@ -113,7 +115,7 @@ func fetchAndCheck(client *http.Client) bool {
     if netTotal > 0 {
         usage := netUsed / netTotal
         if usage > netLimit {
-            // считаем использованную полосу в Mbit/s
+            // занятая полоса в Mbit/s: байты/с -> биты/с -> мегабиты/с
             mbitUsed := (netUsed * 8) / float64(bitsInMbit)
             fmt.Printf("Network bandwidth usage high: %.0f Mbit/s available\n", mbitUsed)
         }
