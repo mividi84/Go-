@@ -44,7 +44,6 @@ func main() {
 			continue
 		}
 
-		// Данные корректны — сбрасываем ошибки
 		errorCount = 0
 
 		vals := make([]float64, 7)
@@ -67,27 +66,29 @@ func main() {
 		netTotal := vals[5]
 		netUsed := vals[6]
 
-		// Load Average
+		// Load Average > 30
 		if loadAvg > 30 {
-			fmt.Printf("Load Average is too high: %.0f\n", loadAvg)
+			fmt.Printf("Load Average is too high: %d\n", int(loadAvg))
 		}
 
-		// Memory usage
-		memPerc := memUsed / memTotal * 100
+		// Memory > 80%
+		memPerc := int(memUsed * 100 / memTotal)
 		if memPerc > 80 {
-			fmt.Printf("Memory usage too high: %.0f%%\n", memPerc)
+			fmt.Printf("Memory usage too high: %d%%\n", memPerc)
 		}
 
-		// Disk free space
-		diskFree := diskTotal - diskUsed
-		if diskUsed/diskTotal > 0.9 {
-			fmt.Printf("Free disk space is too low: %.0f Mb left\n", diskFree/1024/1024)
+		// Disk > 90% used
+		diskUsedPerc := diskUsed * 100 / diskTotal
+		if diskUsedPerc > 90 {
+			diskFreeMb := int((diskTotal - diskUsed) / 1024 / 1024)
+			fmt.Printf("Free disk space is too low: %d Mb left\n", diskFreeMb)
 		}
 
-		// Network
-		if netUsed/netTotal > 0.9 {
-			freeMbit := (netTotal - netUsed) * 8 / 1_000_000
-			fmt.Printf("Network bandwidth usage high: %.0f Mbit/s available\n", freeMbit)
+		// Network > 90%
+		netUsedPerc := netUsed * 100 / netTotal
+		if netUsedPerc > 90 {
+			freeNetMbit := int((netTotal - netUsed) * 8 / 1024 / 1024)
+			fmt.Printf("Network bandwidth usage high: %d Mbit/s available\n", freeNetMbit)
 		}
 
 		time.Sleep(time.Second)
