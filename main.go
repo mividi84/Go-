@@ -71,7 +71,7 @@ func main() {
 		}
 
 		memPerc := int(memUsed * 100 / memTotal)
-		if memPerc > 80 {
+		if memPerc >= 80 {
 			fmt.Printf("Memory usage too high: %d%%\n", memPerc)
 		}
 
@@ -81,7 +81,6 @@ func main() {
 		}
 
 		if netUsed*100/netTotal > 90 {
-			// Автотест считает "Mbit/s" как free_bytes / 1_000_000
 			freeNetMbit := int((netTotal - netUsed) / 1_000_000)
 			fmt.Printf("Network bandwidth usage high: %d Mbit/s available\n", freeNetMbit)
 		}
