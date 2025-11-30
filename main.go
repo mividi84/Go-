@@ -3,7 +3,6 @@ package main
 import (
     "bufio"
     "fmt"
-    "math"
     "net/http"
     "strconv"
     "strings"
@@ -17,9 +16,6 @@ const (
     memLimit     = 0.8 // 80 %
     diskLimit    = 0.9 // 90 %
     netLimit     = 0.9 // 90 %
-
-    bytesInMb  int64 = 1024 * 1024
-    bitsInMbit int64 = 1000 * 1000
 
     pollInterval = 5 * time.Second // если в шаблоне не задано иначе
 )
@@ -98,29 +94,24 @@ func fetchAndCheck(client *http.Client) bool {
     if memTotal > 0 {
         usage := memUsed / memTotal
         if usage > memLimit {
-            // автотесты чувствительны к округлению, берём вниз
-            memPercent := math.Floor(usage*100 + 0.000001)
-            fmt.Printf("Memory usage too high: %.0f%%\n", memPercent)
+            fmt.Printf("Memory usage too high: %.0f%%\n", usage*100)
         }
     }
 
-    // 3) Диск
+    // 3) Диск (total/used считаем уже в мегабайтах)
     if diskTotal > 0 {
-        free := diskTotal - diskUsed
+        freeMb := diskTotal - diskUsed
         usage := diskUsed / diskTotal
         if usage > diskLimit {
-            // число мегабайт тоже округляем вниз
-            mbLeft := math.Floor(free/float64(bytesInMb) + 0.000001)
-            fmt.Printf("Free disk space is too low: %.0f Mb left\n", mbLeft)
+            fmt.Printf("Free disk space is too low: %.0f Mb left\n", freeMb)
         }
     }
 
-    // 4) Сеть
+    // 4) Сеть (netTotal/netUsed считаем уже в Mbit/s)
     if netTotal > 0 {
         usage := netUsed / netTotal
         if usage > netLimit {
-            // переводим в мегабиты/с с делением на 1000*1000 и округляем вниз
-            mbitUsed := math.Floor((netUsed*8)/float64(bitsInMbit) + 0.000001)
+            mbitUsed := netUsed
             fmt.Printf("Network bandwidth usage high: %.0f Mbit/s available\n", mbitUsed)
         }
     }
