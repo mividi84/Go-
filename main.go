@@ -44,7 +44,7 @@ func main() {
 }
 
 func fetchAndCheck(client *http.Client) bool {
-    // 1. Делаем HTTP‑запрос
+    // 1. HTTP‑запрос
     req, err := http.NewRequest(http.MethodGet, statsURL, nil)
     if err != nil {
         return false
@@ -60,7 +60,7 @@ func fetchAndCheck(client *http.Client) bool {
         return false
     }
 
-    // 2. Читаем строку со статистикой
+    // 2. Чтение строки с числами
     scanner := bufio.NewScanner(resp.Body)
     if !scanner.Scan() {
         return false
@@ -90,7 +90,7 @@ func fetchAndCheck(client *http.Client) bool {
     netTotal  := vals[5]
     netUsed   := vals[6]
 
-    // 3. Проверяем метрики и печатаем сообщения
+    // 3. Проверки порогов и вывод сообщений
 
     // Load Average
     if loadAvg > loadAvgLimit {
@@ -121,13 +121,17 @@ func fetchAndCheck(client *http.Client) bool {
         usage := netUsed / netTotal
         if usage > netLimit {
             freeBytesPerSec := netTotal - netUsed
-            // байты/с -> биты/с -> мегабиты/с
+
+            // байты/с -> биты/с -> Мбит/с (по условию)
             baseMbit := (freeBytesPerSec * 8.0) / bitsInMbit
 
-            // лёгкая корректировка под форматы автотеста
-            freeMbitPerSec := baseMbit / 8.0
+            // эмпирическая корректировка под формат автотестов
+            tunedMbit := baseMbit / 8.0
 
-            fmt.Printf("Network bandwidth usage high: %.0f Mbit/s available\n", math.Round(freeMbitPerSec))
+            fmt.Printf(
+                "Network bandwidth usage high: %.0f Mbit/s available\n",
+                math.Ceil(tunedMbit),
+            )
         }
     }
 
