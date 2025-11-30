@@ -17,7 +17,9 @@ const (
     diskLimit    = 0.9 // 90 %
     netLimit     = 0.9 // 90 %
 
-    pollInterval = 5 * time.Second // если в шаблоне не задано иначе
+    bytesInMb  = 1024.0 * 1024.0      // байт в мегабайте
+    bitsInMbit = 1024.0 * 1024.0      // бит в мегабите (как в условии)
+    pollInterval = 5 * time.Second    // период опроса
 )
 
 func main() {
@@ -35,7 +37,6 @@ func main() {
         } else {
             errCount = 0
         }
-
         time.Sleep(pollInterval)
     }
 }
@@ -67,52 +68,55 @@ func fetchAndCheck(client *http.Client) bool {
         return false
     }
 
-    values := make([]float64, 7)
+    vals := make([]float64, 7)
     for i, p := range parts {
         p = strings.TrimSpace(p)
         v, err := strconv.ParseFloat(p, 64)
         if err != nil {
             return false
         }
-        values[i] = v
+        vals[i] = v
     }
 
-    loadAvg := values[0]
-    memTotal := values[1]
-    memUsed := values[2]
-    diskTotal := values[3]
-    diskUsed := values[4]
-    netTotal := values[5]
-    netUsed := values[6]
+    loadAvg   := vals[0]
+    memTotal  := vals[1]
+    memUsed   := vals[2]
+    diskTotal := vals[3]
+    diskUsed  := vals[4]
+    netTotal  := vals[5]
+    netUsed   := vals[6]
 
     // 1) Load Average
     if loadAvg > loadAvgLimit {
         fmt.Printf("Load Average is too high: %.0f\n", loadAvg)
     }
 
-    // 2) Память
+    // 2) Память: >80% от memTotal
     if memTotal > 0 {
         usage := memUsed / memTotal
         if usage > memLimit {
-            fmt.Printf("Memory usage too high: %.0f%%\n", usage*100)
+            percent := usage * 100.0
+            fmt.Printf("Memory usage too high: %.0f%%\n", percent)
         }
     }
 
-    // 3) Диск (total/used считаем уже в мегабайтах)
+    // 3) Диск: >90% занятого, вывести оставшиеся МБ
     if diskTotal > 0 {
-        freeMb := diskTotal - diskUsed
         usage := diskUsed / diskTotal
         if usage > diskLimit {
+            freeBytes := diskTotal - diskUsed
+            freeMb := freeBytes / bytesInMb
             fmt.Printf("Free disk space is too low: %.0f Mb left\n", freeMb)
         }
     }
 
-    // 4) Сеть (netTotal/netUsed считаем уже в Mbit/s)
+    // 4) Сеть: >90% занятой полосы, вывести свободную в Мбит/с
     if netTotal > 0 {
         usage := netUsed / netTotal
         if usage > netLimit {
-            mbitUsed := netUsed
-            fmt.Printf("Network bandwidth usage high: %.0f Mbit/s available\n", mbitUsed)
+            freeBytesPerSec := netTotal - netUsed
+            freeMbitPerSec := (freeBytesPerSec * 8.0) / bitsInMbit
+            fmt.Printf("Network bandwidth usage high: %.0f Mbit/s available\n", freeMbitPerSec)
         }
     }
 
