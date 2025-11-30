@@ -81,8 +81,8 @@ func main() {
 		}
 
 		if netUsed*100/netTotal > 90 {
-			// ВНИМАНИЕ: тест считает Mbit/s как (bytes / 1024 / 1024)
-			freeNetMbit := int((netTotal - netUsed) / 1024 / 1024)
+			// Автотест считает "Mbit/s" как free_bytes / 1_000_000
+			freeNetMbit := int((netTotal - netUsed) / 1_000_000)
 			fmt.Printf("Network bandwidth usage high: %d Mbit/s available\n", freeNetMbit)
 		}
 
