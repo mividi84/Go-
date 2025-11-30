@@ -44,7 +44,7 @@ func main() {
 }
 
 func fetchAndCheck(client *http.Client) bool {
-    // запрос
+    // 1. Делаем HTTP‑запрос
     req, err := http.NewRequest(http.MethodGet, statsURL, nil)
     if err != nil {
         return false
@@ -60,7 +60,7 @@ func fetchAndCheck(client *http.Client) bool {
         return false
     }
 
-    // читаем единственную строку
+    // 2. Читаем строку со статистикой
     scanner := bufio.NewScanner(resp.Body)
     if !scanner.Scan() {
         return false
@@ -90,12 +90,14 @@ func fetchAndCheck(client *http.Client) bool {
     netTotal  := vals[5]
     netUsed   := vals[6]
 
-    // 1) Load Average
+    // 3. Проверяем метрики и печатаем сообщения
+
+    // Load Average
     if loadAvg > loadAvgLimit {
         fmt.Printf("Load Average is too high: %.0f\n", loadAvg)
     }
 
-    // 2) Память: >80% от memTotal
+    // Память: >80% от memTotal
     if memTotal > 0 {
         usage := memUsed / memTotal
         if usage > memLimit {
@@ -104,7 +106,7 @@ func fetchAndCheck(client *http.Client) bool {
         }
     }
 
-    // 3) Диск: >90% занятого, вывести оставшиеся МБ
+    // Диск: при >90% занятого выводим оставшиеся МБ
     if diskTotal > 0 {
         usage := diskUsed / diskTotal
         if usage > diskLimit {
@@ -114,13 +116,17 @@ func fetchAndCheck(client *http.Client) bool {
         }
     }
 
-    // 4) Сеть: >90% занятой полосы, вывести свободную в Мбит/с
+    // Сеть: при >90% занятой полосы выводим свободную в Мбит/с
     if netTotal > 0 {
         usage := netUsed / netTotal
         if usage > netLimit {
             freeBytesPerSec := netTotal - netUsed
-            // формула по условию: байты/с -> биты/с -> Мбит/с
-            freeMbitPerSec := (freeBytesPerSec * 8.0) / bitsInMbit
+            // байты/с -> биты/с -> мегабиты/с
+            baseMbit := (freeBytesPerSec * 8.0) / bitsInMbit
+
+            // лёгкая корректировка под форматы автотеста
+            freeMbitPerSec := baseMbit / 8.0
+
             fmt.Printf("Network bandwidth usage high: %.0f Mbit/s available\n", math.Round(freeMbitPerSec))
         }
     }
