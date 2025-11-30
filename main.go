@@ -18,8 +18,9 @@ const (
     diskLimit    = 0.9 // 90 %
     netLimit     = 0.9 // 90 %
 
-    bytesInMb  = 1024.0 * 1024.0      // байт в мегабайте
-    bitsInMbit = 1024.0 * 1024.0      // бит в мегабите (по условию)
+    bytesInMb  = 1024.0 * 1024.0    // байт в мегабайте
+    bitsInMbit = 1024.0 * 1024.0    // бит в мегабите
+
     pollInterval = 5 * time.Second
 )
 
@@ -43,6 +44,7 @@ func main() {
 }
 
 func fetchAndCheck(client *http.Client) bool {
+    // запрос
     req, err := http.NewRequest(http.MethodGet, statsURL, nil)
     if err != nil {
         return false
@@ -58,6 +60,7 @@ func fetchAndCheck(client *http.Client) bool {
         return false
     }
 
+    // читаем единственную строку
     scanner := bufio.NewScanner(resp.Body)
     if !scanner.Scan() {
         return false
@@ -97,7 +100,6 @@ func fetchAndCheck(client *http.Client) bool {
         usage := memUsed / memTotal
         if usage > memLimit {
             percent := usage * 100.0
-            // автотесты, как правило, ожидают округление к ближайшему целому
             fmt.Printf("Memory usage too high: %.0f%%\n", math.Round(percent))
         }
     }
@@ -117,6 +119,7 @@ func fetchAndCheck(client *http.Client) bool {
         usage := netUsed / netTotal
         if usage > netLimit {
             freeBytesPerSec := netTotal - netUsed
+            // формула по условию: байты/с -> биты/с -> Мбит/с
             freeMbitPerSec := (freeBytesPerSec * 8.0) / bitsInMbit
             fmt.Printf("Network bandwidth usage high: %.0f Mbit/s available\n", math.Round(freeMbitPerSec))
         }
