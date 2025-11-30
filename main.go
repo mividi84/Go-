@@ -1,8 +1,8 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
@@ -11,110 +11,82 @@ import (
 
 func main() {
 	const url = "http://srv.msk01.gigacorp.local/_stats"
-
-	errorCount := 0
+	const pollInterval = 1 * time.Second
+	var errorCount int
 
 	for {
 		resp, err := http.Get(url)
-		if err != nil || resp.StatusCode != 200 {
+		if err != nil || resp.StatusCode != http.StatusOK {
 			errorCount++
 			if errorCount >= 3 {
 				fmt.Println("Unable to fetch server statistic")
-				return
 			}
-			time.Sleep(1 * time.Second)
+			time.Sleep(pollInterval)
 			continue
 		}
 
-		errorCount = 0
+		errorCount = 0 // сброс ошибок при успешном запросе
 
-		scanner := bufio.NewScanner(resp.Body)
-		if !scanner.Scan() {
-			errorCount++
-			if errorCount >= 3 {
-				fmt.Println("Unable to fetch server statistic")
-				return
-			}
-			resp.Body.Close()
-			time.Sleep(1 * time.Second)
-			continue
-		}
-		line := scanner.Text()
+		body, err := ioutil.ReadAll(resp.Body)
 		resp.Body.Close()
-
-		parts := strings.Split(line, ",")
-		if len(parts) != 7 {
+		if err != nil {
 			errorCount++
 			if errorCount >= 3 {
 				fmt.Println("Unable to fetch server statistic")
-				return
 			}
-			time.Sleep(1 * time.Second)
+			time.Sleep(pollInterval)
 			continue
 		}
 
-		vals := make([]int64, 7)
-		ok := true
-		for i, p := range parts {
-			num, err := strconv.ParseInt(strings.TrimSpace(p), 10, 64)
-			if err != nil {
-				ok = false
-				break
-			}
-			vals[i] = num
-		}
-
-		if !ok {
+		data := strings.Split(strings.TrimSpace(string(body)), ",")
+		if len(data) != 7 {
 			errorCount++
 			if errorCount >= 3 {
 				fmt.Println("Unable to fetch server statistic")
-				return
 			}
-			time.Sleep(1 * time.Second)
+			time.Sleep(pollInterval)
 			continue
 		}
 
-		loadAvg := int(vals[0])
-		memTotal := vals[1]
-		memUsed := vals[2]
-		diskTotal := vals[3]
-		diskUsed := vals[4]
-		netTotal := vals[5]
-		netUsed := vals[6]
+		loadAvg, _ := strconv.ParseFloat(data[0], 64)
+		memTotal, _ := strconv.ParseUint(data[1], 10, 64)
+		memUsed, _ := strconv.ParseUint(data[2], 10, 64)
+		diskTotal, _ := strconv.ParseUint(data[3], 10, 64)
+		diskUsed, _ := strconv.ParseUint(data[4], 10, 64)
+		netTotal, _ := strconv.ParseUint(data[5], 10, 64)
+		netUsed, _ := strconv.ParseUint(data[6], 10, 64)
 
-		// ========== Load Average ==========
-		if loadAvg >= 30 {
-			fmt.Printf("Load Average is too high: %d\n", loadAvg)
+		// Load Average
+		if loadAvg > 30 {
+			fmt.Printf("Load Average is too high: %.0f\n", loadAvg)
 		}
 
-		// ========== Memory ==========
+		// Memory usage
 		if memTotal > 0 {
 			memPercent := float64(memUsed) / float64(memTotal) * 100
-			if memPercent >= 80 {
-				fmt.Printf("Memory usage too high: %d%%\n", int(memPercent))
+			if memPercent > 80 {
+				fmt.Printf("Memory usage too high: %.0f%%\n", memPercent)
 			}
 		}
 
-		// ========== Disk ==========
+		// Disk space
 		if diskTotal > 0 {
 			diskPercent := float64(diskUsed) / float64(diskTotal) * 100
 			if diskPercent > 90 {
-				freeBytes := diskTotal - diskUsed
-				freeMb := freeBytes / (1024 * 1024)
+				freeMb := int((diskTotal - diskUsed) / 1024 / 1024)
 				fmt.Printf("Free disk space is too low: %d Mb left\n", freeMb)
 			}
 		}
 
-		// ========== Network ==========
+		// Network bandwidth
 		if netTotal > 0 {
 			netPercent := float64(netUsed) / float64(netTotal) * 100
 			if netPercent > 90 {
-				freeBytes := netTotal - netUsed
-				freeMbit := (freeBytes * 8) / (1024 * 1024)
+				freeMbit := int((float64(netTotal-netUsed) * 8) / (1024 * 1024))
 				fmt.Printf("Network bandwidth usage high: %d Mbit/s available\n", freeMbit)
 			}
 		}
 
-		time.Sleep(1 * time.Second)
+		time.Sleep(pollInterval)
 	}
 }
